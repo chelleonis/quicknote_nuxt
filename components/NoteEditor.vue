@@ -1,91 +1,62 @@
 <template>
   <div class="editor-container">
-    <div class="status-bar">
-      Status: {{ connectionStatus }}
-      <span v-if="error" class="error-message"> {{ error }}</span>
-    </div>
     <textarea
-    v-model="content"
-    class="editor-textarea"
-    placeholder="Start Typing..."
-    @input="handleChange" />
+      v-model="localContent"
+      class="editor-textarea"
+      placeholder="Start Typing..."
+      @input="handleInput"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
 // components/QuickNoteEditor.vue
 const props = defineProps({
-  documentId: {
-    type: String,
-    required: true
-  },
-  accessKey: {
-    type: String,
-    default: ''
+  content: {
+    type: String
   }
 })
 
-const ws = ref(null)
-const content = ref('')
-const connectionStatus = ref('disconnected')
-const error = ref(null)
+const emit = defineEmits(['update:content', 'change'])
 
-//websocket management
-const connectWebSocket = () => {
-  const wsUrl = `ws://localhost:8801/ws?doc=${props.documentId}`
-  const socket = new WebSocket(wsUrl)
+const localContent = ref(props.content)
 
-  socket.onopen = () => {
-    connectionStatus.value = 'connected'
-    //initial sync request
-    socket.send(JSON.stringify({
-      type: 'sync',
-      documentId: props.documentId
-    }))
+//TODO: change to sending signal after user stops typing for a bit
+//debounce (i think)
+watch(() => props.content, (newContent) => {
+  if (newContent !== localContent.value) {
+    localContent.value = newContent
   }
+})
 
-  socket.onclose = () => {
-    connectionStatus.value = 'disconnected'
+const handleInput = (event: Event) => {
+  const newContent = (event.target as HTMLTextAreaElement).value
+  const oldContent = props.content
 
-    //TODO: RECONNECTION LOGIC
-    setTimeout(connectWebSocket, 3000)
-  }
+  if (newContent === oldContent) return
 
-  socket.onerror = () => {
-    error.value = 'Connection error. Retrying...'
-  }
+  const diff = findDiff(oldContent, newContent)
 
-  ws.value = socket
+  if (diff) {
+    emit('change', diff)
+    emit('update:content', newContent)
+  
+}
 }
 
-const handleMessage = (message) => {
-  switch (message.type) {
-    case 'sync': 
-    content.value = message.content
-    break
-    case 'insert':
-      const beforeInsert = content.value.slice(0, message.position)
-      const afterInsert = content.value.slice(message.position)
-      content.value = beforeInsert + message.content + afterInsert
-    case 'delete':
-      const beforeDelete = content.value.slice(0, message.position)
-      const afterDelete = content.value.slice(message.position + message.length)
-      content.value = beforeDelete + afterDelete
-      break
-  }
-}
-
-const findDiff = (oldStr, newStr) => {
+const findDiff = (oldStr: string, newStr: string) => {
   if (newStr.length > oldStr.length) {
-    let i = 0 
-    while (i < oldStr.length && oldStr[i] === newStr[i]) i++
+    let i = 0
+    //insertion
+    while (i < oldStr.length && oldStr[i] == newStr[i]) i++
     return {
       type: 'insert',
       position: i,
       content: newStr.slice(i, i + (newStr.length - oldStr.length))
     }
+    //deletion
   } else {
-    let i = 0
+    let i = 0 
     while (i < newStr.length && oldStr[i] === newStr[i]) i++
     return {
       type: 'delete',
@@ -95,29 +66,7 @@ const findDiff = (oldStr, newStr) => {
   }
 }
 
-const handleChange = (event) => {
- const newContent = event.target.value
- const diff = findDiff(content.value, newContent)
- 
- if (diff && ws.value?.readyState === WebSocket.OPEN) {
-  ws.value.send(JSON.stringify({
-    type: diff.type,
-    position: diff.position,
-    content: diff.length,
-    documentId: props.documentId
-  }))
- }
-}
 
-onMounted(() => {
-  connectWebSocket()
-})
-
-onBeforeUnmount(() => {
-  if (ws.value) {
-    ws.value.close()
-  }
-})
 //TODO: transfer styling to tailwind.
 </script>
 
