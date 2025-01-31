@@ -1,8 +1,7 @@
 <template>
-  <div class="editor-container">
+  <div>
     <textarea
       v-model="localContent"
-      class="editor-textarea"
       placeholder="Start Typing..."
       @input="handleInput"
     />

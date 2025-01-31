@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>create new note</h1>
+    <h1 class="font-bold-700">create new note</h1>
     <div>
       <label> Document Type </label>
       <div>

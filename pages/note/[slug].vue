@@ -124,17 +124,19 @@ function handleWebSocketMessage(event: MessageEvent) {
         docContent.value = message.content
         break
       
-      case 'insert':
-        const before = docContent.value.slice(0, message.position)
-        const after = docContent.value.slice(message.position)
-        docContent.value = before + message.content + after
+      case 'insert': {
+        const insertBefore = docContent.value.slice(0, message.position)
+        const insertAfter = docContent.value.slice(message.position)
+        docContent.value = insertBefore + message.content + insertAfter
         break
+      }
       
-      case 'delete':
-        const before = docContent.value.slice(0, message.position)
-        const after = docContent.value.slice(message.position + message.length)
-        docContent.value = before + after
+      case 'delete': {
+        const deleteBefore = docContent.value.slice(0, message.position)
+        const deleteAfter = docContent.value.slice(message.position + message.length)
+        docContent.value = deleteBefore + deleteAfter
         break
+      }
     }
   } catch (e) {
     console.error('Failed to process message:', e)
